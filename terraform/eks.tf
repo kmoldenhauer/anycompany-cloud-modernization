@@ -59,7 +59,14 @@ resource "aws_eks_cluster" "main" {
     }
   }
 
-  # 3. Modern IAM Access Management (replaces legacy aws-auth ConfigMap)
+  # 3. Automatic Elastic Load Balancing (ELB integration handled natively)
+  kubernetes_network_config {
+    elastic_load_balancing {
+      enabled = true
+    }
+  }
+
+  # 4. Modern IAM Access Management (replaces legacy aws-auth ConfigMap)
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
