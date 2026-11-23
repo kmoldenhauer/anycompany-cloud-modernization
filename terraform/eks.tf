@@ -35,6 +35,9 @@ resource "aws_eks_cluster" "main" {
   role_arn = aws_iam_role.eks_cluster.arn
   version  = "1.31" # Latest standard EKS version supporting Auto Mode
 
+  # Explicitly disable self-managed add-ons for EKS Auto Mode
+  bootstrap_self_managed_addons = false
+
   vpc_config {
     # Place cluster interfaces across private subnets and public subnets
     subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
@@ -86,27 +89,4 @@ resource "aws_eks_cluster" "main" {
   tags = {
     Name = "${var.project_name}-cluster"
   }
-}
-
-# -------------------------------------------------------------
-# 4. Cluster Access Entry for your local AWS Identity
-# -------------------------------------------------------------
-resource "aws_eks_access_entry" "admin_user" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = data.aws_caller_identity.current.arn
-  type          = "STANDARD"
-
-  depends_on = [aws_eks_cluster.main]
-}
-
-resource "aws_eks_access_policy_association" "admin_policy" {
-  cluster_name  = aws_eks_cluster.main.name
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-  principal_arn = data.aws_caller_identity.current.arn
-
-  access_scope {
-    type = "cluster"
-  }
-
-  depends_on = [aws_eks_access_entry.admin_user]
 }

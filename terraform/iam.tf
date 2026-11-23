@@ -8,9 +8,10 @@
 data "aws_iam_policy_document" "eks_cluster_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
-      identifiers = ["[suspicious link removed]"]
+      identifiers = ["eks.amazonaws.com"]
     }
   }
 }
@@ -56,21 +57,26 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_networking" {
 # -------------------------------------------------------------
 
 # Trust policy: Allows EC2 worker instances to assume this role
-data "aws_iam_policy_document" "ec2_assume_role" {
+data "aws_iam_policy_document" "eks_node_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
-      identifiers = ["[suspicious link removed]"]
+      identifiers = ["ec2.amazonaws.com"]
     }
   }
 }
 
+# The IAM Role referencing the exact same name
 resource "aws_iam_role" "eks_node" {
   name               = "${var.project_name}-eks-node-role"
-  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
-}
+  assume_role_policy = data.aws_iam_policy_document.eks_node_assume_role.json
 
+  tags = {
+    Name = "${var.project_name}-eks-node-role"
+  }
+}
 # Minimal Auto Mode node policies:
 # Allows nodes to pull images from ECR, register with the cluster, and talk to VPC networking
 resource "aws_iam_role_policy_attachment" "node_worker" {
