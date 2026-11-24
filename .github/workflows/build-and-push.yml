@@ -1,0 +1,48 @@
+name: Build and Push API Container to ECR
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "app/**"
+      - ".github/workflows/build-and-push.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write  # Crucial: allows GitHub to request the OIDC token
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641548802070:role/anycompany-github-actions-ecr-role
+          aws-region: us-east-1
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: anycompany-api
+          IMAGE_TAG: latest
+        run: |
+          echo "Building container image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./app
+          
+          # Tag with Git commit SHA for version tracking
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+          echo "Pushing image to Amazon ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
