@@ -26,6 +26,27 @@ resource "aws_security_group" "eks_cluster" {
     Name = "${var.project_name}-eks-cluster-sg"
   }
 }
+# Ingress: Allow all intra-cluster communication within the VPC
+resource "aws_security_group_rule" "eks_cluster_ingress_vpc" {
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.eks_cluster.id
+  cidr_blocks       = [aws_vpc.main.cidr_block]
+  description       = "Allow all internal VPC traffic to communicate with cluster and kubelet"
+}
+
+# Ingress: Allow nodes and control plane sharing this SG to talk to each other
+resource "aws_security_group_rule" "eks_cluster_ingress_self" {
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.eks_cluster.id
+  self              = true
+  description       = "Allow members of the cluster security group to communicate"
+}
 
 # -------------------------------------------------------------
 # 3. The EKS Cluster with Auto Mode Enabled

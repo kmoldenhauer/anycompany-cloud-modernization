@@ -7,7 +7,10 @@
 # Trust policy: Allows the AWS EKS service to assume this role
 data "aws_iam_policy_document" "eks_cluster_assume_role" {
   statement {
-    actions = ["sts:AssumeRole"]
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
 
     principals {
       type        = "Service"
@@ -77,19 +80,31 @@ resource "aws_iam_role" "eks_node" {
     Name = "${var.project_name}-eks-node-role"
   }
 }
-# Minimal Auto Mode node policies:
-# Allows nodes to pull images from ECR, register with the cluster, and talk to VPC networking
+# Minimal Worker Node Policy
 resource "aws_iam_role_policy_attachment" "node_worker" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodeMinimalPolicy"
   role       = aws_iam_role.eks_node.name
 }
 
+# Container Registry Pull Policy
 resource "aws_iam_role_policy_attachment" "node_ecr" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
   role       = aws_iam_role.eks_node.name
 }
 
-# Creates the Instance Profile that EC2 nodes attach to
+# VPC CNI Policy (allows pods to get real private VPC IP addresses)
+resource "aws_iam_role_policy_attachment" "node_cni" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_node.name
+}
+
+# Standard Worker Node Policy
+resource "aws_iam_role_policy_attachment" "node_general" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_node.name
+}
+
+# Explicit Instance Profile attached to the Node Role
 resource "aws_iam_instance_profile" "eks_node" {
   name = "${var.project_name}-eks-node-profile"
   role = aws_iam_role.eks_node.name
