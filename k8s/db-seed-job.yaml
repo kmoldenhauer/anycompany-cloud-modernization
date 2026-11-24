@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: anycompany-db-seed
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: psql-seeder
+        image: postgres:16-alpine
+        env:
+        - name: PGPASSWORD
+          value: "AnyCompanySecure2026!"
+        command: ["psql"]
+        args:
+        - "-h"
+        - "anycompany-db.ctkscmkcqcna.us-east-1.rds.amazonaws.com"
+        - "-U"
+        - "dbadmin"
+        - "-d"
+        - "anycompany"
+        - "-c"
+        - |
+          -- Create Tables
+          CREATE TABLE IF NOT EXISTS customers (
+              id SERIAL PRIMARY KEY,
+              name VARCHAR(100) NOT NULL,
+              email VARCHAR(100) UNIQUE NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS products (
+              id SERIAL PRIMARY KEY,
+              sku VARCHAR(50) UNIQUE NOT NULL,
+              name VARCHAR(100) NOT NULL,
+              price DECIMAL(10, 2) NOT NULL,
+              stock INT DEFAULT 0
+          );
+
+          CREATE TABLE IF NOT EXISTS orders (
+              id SERIAL PRIMARY KEY,
+              customer_id INT REFERENCES customers(id),
+              product_id INT REFERENCES products(id),
+              quantity INT NOT NULL,
+              total_price DECIMAL(10, 2) NOT NULL,
+              order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          -- Insert Sample Retail Data
+          INSERT INTO customers (name, email) VALUES
+              ('Jane Doe', 'jane.doe@example.com'),
+              ('John Smith', 'john.smith@example.com'),
+              ('Alice Johnson', 'alice.j@example.com')
+          ON CONFLICT (email) DO NOTHING;
+
+          INSERT INTO products (sku, name, price, stock) VALUES
+              ('SKU-CLOUD-01', 'Cloud Modernization Handbook', 29.99, 150),
+              ('SKU-EKS-02', 'Kubernetes Quickstart Guide', 39.50, 80),
+              ('SKU-DEV-03', 'DevOps Coffee Tumbler', 19.99, 300)
+          ON CONFLICT (sku) DO NOTHING;
+
+          INSERT INTO orders (customer_id, product_id, quantity, total_price) VALUES
+              (1, 1, 2, 59.98),
+              (2, 3, 1, 19.99),
+              (3, 2, 1, 39.50);
+
+          -- Query summary to verify in container logs
+          SELECT 'Customers:' AS entity, count(*) FROM customers
+          UNION ALL
+          SELECT 'Products:', count(*) FROM products
+          UNION ALL
+          SELECT 'Orders:', count(*) FROM orders;
