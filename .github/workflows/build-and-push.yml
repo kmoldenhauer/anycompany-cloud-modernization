@@ -25,13 +25,22 @@ jobs:
         run: |
           echo "Repository: ${{ github.repository }}"
           echo "Repository Owner: ${{ github.repository_owner }}"
-          echo "Ref: ${{ github.ref }}"   
+          echo "Ref: ${{ github.ref }}"
+
+      - name: Inspect GitHub OIDC Token Claims
+        run: |
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo "=== Decoded OIDC Payload ==="
+          echo "$TOKEN" | cut -d'.' -f2 | base64 --decode
+          echo ""
+          echo "============================"
 
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::641548802070:role/anycompany-github-actions-ecr-role
           aws-region: us-east-1
+          audience: sts.amazonaws.com
 
       - name: Log in to Amazon ECR
         id: login-ecr
